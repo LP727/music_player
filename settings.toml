@@ -1,2 +1,1 @@
-[env]
-ASSETS_FOLDER_PATH = './assets'
+assets_folder_path = './assets'

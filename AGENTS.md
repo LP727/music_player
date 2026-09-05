@@ -7,6 +7,7 @@ This file provides guidelines and instructions for AI agents working on this pro
 - For the same reason as above, avoid writing code unless explicitely asked to do so.
 - Keep in mind that this project could be edited from any editor or coding agent, therefore prefer cross-compatibility rather than VScode specific settings.
 - Welcome to the early 2000s, I am learning Rust the way I learned C: no AI, but now I have a private tutor to answer my questions : YOU. I wouldn't compile my code and treat warning everytime I ask questions to my teacher, get used to seeing code that is not compile ready, you DON'T need to mention it unless I am explicitely asking questions about what is going on and why the compile is failing.
+- Even when the user asks for how to do things, do not rob them of a learning experience, use pseudo code, or give generic shape to patterns you are outputting, do not give too much unless they insist for more.
 
 ## Ignored Directories
 - `assets` (contains mp3 files)
