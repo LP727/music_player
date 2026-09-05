@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Music Player",
+      "cargo": {
+        "args": ["build"]
+      },
+      "program": "${cargo:program}",
+      "args": [],
+      "stopOnEntry": true
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Tests",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib"]
+      },
+      "program": "${cargo:program}",
+      "args": ["${input:targetTest}"],
+      "stopOnEntry": true
+    }
+  ],
+  "inputs": [
+    {
+      "id": "targetTest",
+      "type": "pickString",
+      "description": "What module do you want to test?",
+      "options": ["toml_source", "library"],
+      "default": "toml_source"
+    }
+  ]
+}
