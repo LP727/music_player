@@ -7,7 +7,7 @@ use std::path::Path;
 use std::println;
 
 use anyhow::Ok;
-use music_player::library::scan_assets;
+use music_player::library::InMemoryLibrary;
 use music_player::settings::{Settings, read_settings};
 
 fn main() -> anyhow::Result<()> {
@@ -20,10 +20,8 @@ fn main() -> anyhow::Result<()> {
     let settings_path = &Path::new(&user_settings.assets_folder_path);
 
     // Scan for music
-    let songs_path = scan_assets(settings_path);
-    for song in songs_path {
-        println!("{}", song);
-    }
+    let song_lib = InMemoryLibrary::new(settings_path);
+    println!("{}", song_lib);
 
     // TODO: Set state
 

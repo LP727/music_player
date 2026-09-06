@@ -29,6 +29,11 @@ pub fn _write_settings(_new_settings: &super::Settings) -> anyhow::Result<()> {
     Ok(())
 }
 
+pub fn _edit_settings(_new_settings: &super::Settings) -> anyhow::Result<()> {
+    // TODO implement a way to write new settings from the app
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::settings::{Settings, read_settings};

@@ -77,11 +77,57 @@ impl Track {
     }
 }
 
-pub trait Library {}
+pub trait Library {
+    fn all_tracks(&self) -> Vec<&Track>;
+    fn by_artist(&self, artist_name: &str) -> Vec<&Track>;
+    fn by_album(&self, album_name: &str) -> Vec<&Track>;
+    fn by_list(&self, list_name: &str) -> Vec<&Track>;
+}
 
-pub struct InMemoryLibrary {}
+pub struct InMemoryLibrary {
+    tracks: Vec<Track>,
+}
 
-impl Library for InMemoryLibrary {}
+impl InMemoryLibrary {
+    pub fn new(asset_path: &Path) -> Self {
+        Self {
+            tracks: scan_assets(asset_path),
+        }
+    }
+}
+
+impl Display for InMemoryLibrary {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for track in self.tracks.iter() {
+            println!("{}", track);
+        }
+
+        core::result::Result::Ok(())
+    }
+}
+
+impl Library for InMemoryLibrary {
+    fn all_tracks(&self) -> Vec<&Track> {
+        self.tracks.iter().collect()
+    }
+    fn by_artist(&self, artist_name: &str) -> Vec<&Track> {
+        self.tracks
+            .iter()
+            .filter(|x| x.artist == artist_name)
+            .collect()
+    }
+    fn by_album(&self, album_name: &str) -> Vec<&Track> {
+        self.tracks
+            .iter()
+            .filter(|x| x.album == album_name)
+            .collect()
+    }
+
+    fn by_list(&self, _list_name: &str) -> Vec<&Track> {
+        // TODO: Implement list storage in user data using directories
+        self.tracks.iter().collect()
+    }
+}
 
 pub fn scan_assets(asset_path: &Path) -> Vec<Track> {
     let mut songs = Vec::new();
