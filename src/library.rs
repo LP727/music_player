@@ -49,7 +49,7 @@ impl Display for Track {
 }
 
 impl Track {
-    pub fn from_path_buf(track_path: &PathBuf) -> anyhow::Result<Track> {
+    pub fn from_path(track_path: &Path) -> anyhow::Result<Track> {
         let mut track: Track = Track::default();
 
         let taggedfile = read_from_path(track_path)?;
@@ -137,7 +137,7 @@ pub fn scan_assets(asset_path: &Path) -> Vec<Track> {
     {
         let entry_path: PathBuf = entry.into_path();
         if is_supported_format(&entry_path) {
-            let track = match Track::from_path_buf(&entry_path) {
+            let track = match Track::from_path(&entry_path) {
                 Ok(value) => value,
                 Err(e) => {
                     eprintln!("Could not read file : `{:?}` : {}", entry_path, e);
@@ -163,8 +163,8 @@ mod test {
 
     #[test]
     fn scan_test() -> anyhow::Result<(), String> {
-        let settings_file = &format!("{}/assets", env!("CARGO_MANIFEST_DIR"));
-        let asset_path: &Path = Path::new(settings_file);
+        let assets_dir = &format!("{}/assets", env!("CARGO_MANIFEST_DIR"));
+        let asset_path: &Path = Path::new(assets_dir);
         let songs_path = scan_assets(asset_path);
 
         if songs_path.len() == 3 {
