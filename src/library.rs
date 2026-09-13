@@ -17,6 +17,7 @@ use lofty::{file::TaggedFileExt, read_from_path};
 
 use walkdir::WalkDir;
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Track {
     pub title: String,
     pub artist: String,

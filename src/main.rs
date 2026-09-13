@@ -9,7 +9,8 @@ use std::process;
 
 use anyhow::Ok;
 use directories::{ProjectDirs, UserDirs};
-use music_player::library::InMemoryLibrary;
+use music_player::audio::manager::AudioManager;
+use music_player::library::{InMemoryLibrary, Library};
 use music_player::settings::{Settings, read_settings};
 
 fn main() -> anyhow::Result<()> {
@@ -46,6 +47,12 @@ fn main() -> anyhow::Result<()> {
     // Scan for music
     let song_lib = InMemoryLibrary::new(assets_path);
     println!("{}", song_lib);
+
+    let mut man = AudioManager::new();
+
+    for track in song_lib.all_tracks() {
+        man.play(Some(track.clone()));
+    }
 
     // TODO: Set state
 
