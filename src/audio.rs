@@ -3,14 +3,34 @@
 //! This module provides an interface for the Sink/OutputStream wrapping
 
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::Path;
 
 use symphonia::core::formats::FormatOptions;
-use symphonia::core::formats::probe::Hint;
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
 
-pub fn is_supported_format(path: &PathBuf) -> bool {
+/// Verifies if a specific file is supported by symphonia since it handles the codecs.
+/// Note: To avoid mismatch in support, we keep Symphonia's version do the one rodio uses (0.5.5
+/// currently)
+///
+/// # Arguments
+///
+/// - `path` (`&Path`) - Source (audio) file
+///
+/// # Returns
+///
+/// - `bool` - Format supported or not in rodio's version of symphonia
+///
+/// # Examples
+///
+/// TODO : Fill with AI
+/// ```
+/// use crate::...;
+///
+/// let _ = is_supported_format();
+/// ```
+pub fn is_supported_format(path: &Path) -> bool {
     let mut hint = Hint::new();
 
     // Provide the file extension as a hint.
@@ -33,8 +53,8 @@ pub fn is_supported_format(path: &PathBuf) -> bool {
     // Use the default options for metadata readers.
     let meta_opts: MetadataOptions = Default::default();
 
-    match symphonia::default::get_probe().probe(&hint, mss, fmt_opts, meta_opts) {
-        Ok(_) => return true,
-        _ => return false,
-    }
+    // if ok return true, is error return false
+    symphonia::default::get_probe()
+        .format(&hint, mss, &fmt_opts, &meta_opts)
+        .is_ok()
 }

@@ -61,15 +61,15 @@ impl Track {
 
         track.title = file_tag
             .get_string(ItemKey::TrackTitle)
-            .unwrap_or_else(|| "Unknown")
+            .unwrap_or("Unknown")
             .to_string();
         track.album = file_tag
             .get_string(ItemKey::AlbumTitle)
-            .unwrap_or_else(|| "Unknown")
+            .unwrap_or("Unknown")
             .to_string();
         track.artist = file_tag
             .get_string(ItemKey::TrackArtist)
-            .unwrap_or_else(|| "Unknown")
+            .unwrap_or("Unknown")
             .to_string();
         track.file_path = track_path.to_path_buf();
 
@@ -136,6 +136,7 @@ pub fn scan_assets(asset_path: &Path) -> Vec<Track> {
     // ignore errors like denied permissions
     {
         let entry_path: PathBuf = entry.into_path();
+        // Rely on Symphonia to verify support as Lofty support doesn't guarantee audio support
         if is_supported_format(&entry_path) {
             let track = match Track::from_path(&entry_path) {
                 Ok(value) => value,

@@ -19,9 +19,6 @@ use std::{eprintln, fs, path::Path, println};
 ///
 /// - `Option<super::Settings>` - Settings struct, currently only holds the assets (music) location
 ///
-/// # Errors
-///
-/// TODO: Fill with AI
 ///
 /// # Examples
 ///
@@ -131,9 +128,9 @@ pub fn write_settings(settings_path: &Path, new_settings: &super::Settings) -> a
 /// ```
 /// use crate::...;
 ///
-/// let _ = edit_settings();
+/// let _ = _edit_settings();
 /// ```
-pub fn edit_settings(settings_path: &Path, new_settings: &super::Settings) -> anyhow::Result<()> {
+pub fn _edit_settings(settings_path: &Path, new_settings: &super::Settings) -> anyhow::Result<()> {
     // if there are no settings, this will update them to the new value
     let old_settings = read_settings(settings_path, &new_settings.assets_folder_path).unwrap();
 
@@ -148,7 +145,7 @@ pub fn edit_settings(settings_path: &Path, new_settings: &super::Settings) -> an
 #[cfg(test)]
 mod test {
     use crate::settings::{Settings, read_settings, write_settings};
-    use std::{mem::type_info::Str, path::Path};
+    use std::path::Path;
 
     #[test]
     fn test_default() {

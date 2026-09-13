@@ -8,8 +8,27 @@ anyhow = "1.0.104"
 directories = "6.0.0"
 lofty = "0.25.1"
 ratatui = "0.30.0"
-rodio = "0.22.2"
+# Explicitely list the rodio feature to ensure feature match with underlying symphonia
+rodio = { version = "0.22.2", default-features = false, features = [
+    "playback",
+    "flac",
+    "mp3",
+    "mp4",
+    "vorbis",
+    "wav",
+] }
+# Explicitely listing the same symphonia version that Rodio use to avoid having both crates
+symphonia = { version = "0.5.5", features = [
+    "mp3",
+    "flac",
+    "isomp4",
+    "aac",
+    "ogg",
+    "vorbis",
+    "wav",
+    "pcm",
+    "adpcm",
+] }
 serde = { version = "1.0.229", features = ["derive"] }
-symphonia = { version = "0.6.1", features = ["all-codecs", "all-meta"] }
 toml = "1.1.4"
 walkdir = "2.5.0"
