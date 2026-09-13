@@ -1,0 +1,4 @@
+# Forces the nightly toolchain, currently required to enable comments wrapping in the code to have format n save wrap
+[toolchain]
+channel = "nightly"
+components = ["rustfmt", "rust-analyzer"]

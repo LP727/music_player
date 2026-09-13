@@ -13,6 +13,7 @@ use music_player::library::InMemoryLibrary;
 use music_player::settings::{Settings, read_settings};
 
 fn main() -> anyhow::Result<()> {
+    // Get the user's music directory location
     let music_path: PathBuf;
     if let Some(user_path) = UserDirs::new() {
         music_path = user_path.audio_dir().unwrap().to_path_buf();
@@ -21,6 +22,7 @@ fn main() -> anyhow::Result<()> {
         process::exit(1)
     }
 
+    // Get the app's directory location
     let settings_path: PathBuf;
     if let Some(project_path) = ProjectDirs::from("com", "lpbeliveau", "music_app") {
         settings_path = project_path.config_dir().to_path_buf();
@@ -29,6 +31,7 @@ fn main() -> anyhow::Result<()> {
         process::exit(1)
     }
 
+    // Temporary debug logs
     println!("{:?}", &music_path);
     println!("{:?}", &settings_path);
 

@@ -5,6 +5,34 @@
 use std::io::ErrorKind;
 use std::{eprintln, fs, path::Path, println};
 
+/// Fetch the user settings file, create one if non was found, calling write settings
+/// against the provided location for settings and storing the provided location for assets (music)
+///
+/// # Arguments
+///
+/// - `settings_path` (`&Path`) - Path to look for settings, providing an alternate path to
+///   exsisting settings will create a new file there
+/// - `music_path` (`&Path`) - Path to look for assets, providing an alternate path will create a
+///   new file there
+///
+/// # Returns
+///
+/// - `Option<super::Settings>` - Settings struct, currently only holds the assets (music) location
+///
+/// # Errors
+///
+/// TODO: Fill with AI
+///
+/// # Examples
+///
+/// ```
+/// use crate::...;
+///
+/// let asset_path: &Path = Path::new("./assets");
+/// let settings_file = &format!("{}/settings.toml", env!("CARGO_MANIFEST_DIR"));
+/// let settings_path: &Path = Path::new(settings_file);
+/// let settings =  read_settings(settings_path, asset_path).unwrap();
+/// ```
 pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::Settings> {
     let text_settings = fs::read_to_string(settings_path);
 
@@ -49,22 +77,78 @@ pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::S
     }
 }
 
-// Write default settings (currently just the location of the Music)
+/// Write default settings (currently just the location of the Music)
+///
+/// # Arguments
+///
+/// - `settings_path` (`&Path`) - Path to look for settings, providing an alternate path will create
+///   a new file there
+/// - `music_path` (`&Path`) - Path to look for assets, providing an alternate path will create a
+///   new file there
+///
+/// # Returns
+///
+/// - `anyhow::Result<()>` - Ok(()) if successful, io::Result if fs::write fails
+///
+/// # Errors
+///
+/// TODO: Fill with AI
+///
+/// # Examples
+/// TODO: Fill with AI
+/// ```
+/// use crate::...;
+///
+/// let _ = write_settings();
+/// ```
 pub fn write_settings(settings_path: &Path, new_settings: &super::Settings) -> anyhow::Result<()> {
     let setting = toml::to_string(new_settings)?;
     fs::write(settings_path, setting)?;
     Ok(())
 }
 
-pub fn _edit_settings(_new_settings: &super::Settings) -> anyhow::Result<()> {
-    // TODO implement a way to write new settings from the app
+/// Edit existing settings. Reads existing settings, if different, writes the new ones, relies on
+/// read_settings and write_settings.
+///
+/// TODO: When (if) we add more settings, need to create a way to
+/// just edit one, and maybe have a settings manager to have a RAM copy to avoid file operations #
+/// Arguments
+///
+/// - `settings_path` (`&Path`) - Path for potentially existing settings
+/// - `new_settings` (`&super`) - new settings value
+///
+/// # Returns
+///
+/// - `anyhow::Result<()>` - read_settings or write settings error pattern
+///
+/// # Errors
+/// TODO: Fill with AI
+///
+/// Describe possible errors.
+///
+/// # Examples
+/// TODO: Fill with AI
+/// ```
+/// use crate::...;
+///
+/// let _ = edit_settings();
+/// ```
+pub fn edit_settings(settings_path: &Path, new_settings: &super::Settings) -> anyhow::Result<()> {
+    // if there are no settings, this will update them to the new value
+    let old_settings = read_settings(settings_path, &new_settings.assets_folder_path).unwrap();
+
+    // If new settings differ from the existing one we
+    if old_settings != *new_settings {
+        return write_settings(settings_path, new_settings);
+    }
+
     Ok(())
 }
 
 #[cfg(test)]
 mod test {
     use crate::settings::{Settings, read_settings, write_settings};
-    use std::path::Path;
+    use std::{mem::type_info::Str, path::Path};
 
     #[test]
     fn test_default() {
@@ -112,5 +196,11 @@ mod test {
             }
             _ => return Err(String::from("Failed to read default settings.")),
         };
+    }
+
+    #[test]
+    fn test_eddit_settings() -> anyhow::Result<(), String> {
+        // TODO: Fill with AI
+        Ok(())
     }
 }

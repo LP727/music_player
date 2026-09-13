@@ -26,7 +26,8 @@ pub fn is_supported_format(path: &PathBuf) -> bool {
     // Create the media source stream using the boxed media source from above.
     let mss = MediaSourceStream::new(source, Default::default());
 
-    // Use the default options for format readers other than for gapless playback.
+    // Use the default options for format readers other than for gapless
+    // playback.
     let fmt_opts: FormatOptions = Default::default();
 
     // Use the default options for metadata readers.

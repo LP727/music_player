@@ -14,7 +14,7 @@ pub use toml_source::write_settings;
 // Root location
 pub const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq)]
 pub struct Settings {
     pub assets_folder_path: PathBuf,
 }
