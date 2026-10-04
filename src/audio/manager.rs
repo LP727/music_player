@@ -6,10 +6,12 @@ use std::io::BufReader;
 use std::{fs::File, time::Duration};
 
 use crate::library::Track;
-use rodio::{Decoder, Player};
+use rodio::{Decoder, MixerDeviceSink, Player};
 
 pub struct AudioManager {
     player: Player,
+    // dropping would clear the queue, we need to keep this
+    _device: MixerDeviceSink,
 }
 
 /// Describe this function.
@@ -30,7 +32,10 @@ impl AudioManager {
     pub fn new() -> Self {
         let sink = rodio::DeviceSinkBuilder::open_default_sink().expect("Failed to open sink");
         let player = rodio::Player::connect_new(sink.mixer());
-        Self { player }
+        Self {
+            player,
+            _device: sink,
+        }
     }
 
     /// Starts Playing a new song or resumes playing one, caller must be aware if something is
@@ -49,8 +54,8 @@ impl AudioManager {
     /// let _ = play();
     /// ```
     pub fn play(&mut self, track: Option<&Track>) {
-        if !track.is_none() {
-            let file = BufReader::new(File::open(track.unwrap().file_path.clone()).unwrap());
+        if let Some(t) = track {
+            let file = BufReader::new(File::open(&t.file_path).unwrap());
             let sound_source = Decoder::new(file).unwrap();
 
             println!(
@@ -58,13 +63,17 @@ impl AudioManager {
                 track.clone().unwrap().artist,
                 track.clone().unwrap().album
             );
-
+            // clear exisiting queue
+            self.player.clear();
+            // add new song
             self.player.append(sound_source);
         }
 
         // This will have no effect if no source was previously loaded
         self.player.play();
-        self.player.sleep_until_end();
+
+        // TODO: Remove, this makes play blocking now, need something else
+        //self.player.sleep_until_end();
         return;
     }
 
@@ -98,8 +107,21 @@ impl AudioManager {
     pub fn seek(&self, pos: Duration) -> Result<(), rodio::source::SeekError> {
         self.player.try_seek(pos)
     }
+
+    pub fn is_paused(&self) -> bool {
+        self.player.is_paused() && !self.player.empty()
+    }
+
+    pub fn is_playing(&self) -> bool {
+        !self.player.is_paused() && !self.player.empty()
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.player.empty()
+    }
 }
 
+#[cfg(test)]
 mod test {
 
     use crate::{audio::manager::AudioManager, library::Track};

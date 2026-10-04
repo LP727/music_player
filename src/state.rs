@@ -3,18 +3,16 @@
 //! This module provides API to track the current AppState.
 //! Things like the current index, the list to track, volume, etc.
 
-use std::{cell::RefCell, rc::Rc, time::Duration};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{audio::manager::AudioManager, library::Track};
 
-struct AppState {
-    // This allows us to share the audio manager and call play/pause/sop on it while others can
-    // handle volume, next, ext.
-    man: Rc<RefCell<AudioManager>>,
-}
+struct AppState {}
 
 struct StopState {
-    man: Rc<RefCell<AudioManager>>,
+    // This allows us to share the audio manager and call play/pause/sop on it while others can
+    // handle volume, next, ext.
+    pub man: Rc<RefCell<AudioManager>>,
 }
 
 struct PauseState {
@@ -56,7 +54,7 @@ impl StopState {
     /// let state = AppState::new() // stopped
     /// let state = state.play(song_lib.all_tracks()); // playing from index 0
     /// ```
-    pub fn play(mut self, tracks: Vec<Track>, index: Option<usize>) -> PlayState {
+    pub fn play(self, tracks: Vec<Track>, index: Option<usize>) -> PlayState {
         if tracks.len() > 0 {
             self.man
                 .borrow_mut()
@@ -110,7 +108,7 @@ impl PauseState {
 }
 
 impl PlayState {
-    pub fn pause(mut self) -> PauseState {
+    pub fn pause(self) -> PauseState {
         self.man.borrow_mut().pause();
         PauseState {
             man: self.man,
@@ -122,5 +120,75 @@ impl PlayState {
     pub fn stop(self) -> StopState {
         self.man.borrow_mut().stop();
         StopState { man: self.man }
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use std::rc::Rc;
+    use std::thread;
+    use std::time::Duration;
+    use std::{cell::RefCell, path::Path};
+
+    use crate::{audio::manager::AudioManager, library::scan_assets, state::AppState};
+
+    #[test]
+    fn state_cycle_test() -> anyhow::Result<(), String> {
+        // Audio manager init
+        let manager = Rc::new(RefCell::new(AudioManager::new()));
+
+        // path list
+        let assets_dir = &format!("{}/assets", env!("CARGO_MANIFEST_DIR"));
+        let asset_path: &Path = Path::new(assets_dir);
+        let songs = scan_assets(asset_path);
+        assert!(songs.len() >= 2, "Need at least 2 songs for there tests");
+        assert!(songs[0].duration >= Duration::from_secs(1));
+
+        let state = AppState::new(manager);
+        // manager should
+        assert!(state.man.borrow().is_stopped());
+
+        let state = state.play(songs.clone(), None);
+        assert_eq!(state.index, 0);
+        assert_eq!(state.tracks.len(), songs.len());
+        assert!(state.man.borrow().is_playing());
+        thread::sleep(Duration::from_millis(100));
+        assert!(state.man.borrow().position() > Duration::from_millis(0));
+        assert!(state.man.borrow().position() < Duration::from_millis(200));
+
+        let state = state.pause();
+        assert_eq!(state.index, 0);
+        assert_eq!(state.tracks.len(), songs.len());
+        assert!(state.man.borrow().is_paused());
+        assert!(state.man.borrow().position() > Duration::from_millis(0));
+        assert!(state.man.borrow().position() < Duration::from_millis(200));
+
+        let state = state.play(Vec::new(), None);
+        assert!(state.man.borrow().is_playing());
+        assert!(state.man.borrow().position() > Duration::from_millis(0));
+        assert!(state.man.borrow().position() < Duration::from_millis(200));
+
+        let state = state.stop();
+        // giving time for the player to flush the mixer
+        thread::sleep(Duration::from_millis(100));
+        assert!(state.man.borrow().is_stopped());
+
+        let state = state.play(songs.clone(), Some(1));
+        assert_eq!(state.index, 1);
+        thread::sleep(Duration::from_millis(300));
+        assert!(state.man.borrow().position() > Duration::from_millis(200));
+        assert!(state.man.borrow().position() < Duration::from_millis(400));
+
+        let state = state.pause();
+        assert!(state.man.borrow().position() > Duration::from_millis(200));
+        assert!(state.man.borrow().position() < Duration::from_millis(400));
+        assert_eq!(state.index, 1);
+
+        let state = state.stop();
+        // giving time for the player to flush the mixer
+        thread::sleep(Duration::from_millis(100));
+        assert!(state.man.borrow().is_stopped());
+        Ok(())
     }
 }

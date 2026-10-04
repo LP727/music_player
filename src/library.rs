@@ -9,11 +9,12 @@ use core::result::Result::Ok;
 use std::fmt::Display;
 
 use std::path::Path;
+use std::time::Duration;
 use std::writeln;
 use std::{path::PathBuf, println};
 
 use lofty::prelude::ItemKey;
-use lofty::{file::TaggedFileExt, read_from_path};
+use lofty::{file::AudioFile, file::TaggedFileExt, read_from_path};
 
 use walkdir::WalkDir;
 
@@ -23,6 +24,7 @@ pub struct Track {
     pub artist: String,
     pub album: String,
     pub file_path: PathBuf,
+    pub duration: Duration,
 }
 
 impl Default for Track {
@@ -32,6 +34,7 @@ impl Default for Track {
             artist: String::from("Unknown"),
             album: String::from("Unknown"),
             file_path: PathBuf::from("Unknown"),
+            duration: Duration::from_secs(0),
         }
     }
 }
@@ -73,6 +76,8 @@ impl Track {
             .unwrap_or("Unknown")
             .to_string();
         track.file_path = track_path.to_path_buf();
+
+        track.duration = taggedfile.properties().duration();
 
         Ok(track)
     }
