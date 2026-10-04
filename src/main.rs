@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
     let mut man = AudioManager::new();
 
     for track in song_lib.all_tracks() {
-        man.play(Some(track.clone()));
+        man.play(Some(track));
     }
 
     // TODO: Set state
