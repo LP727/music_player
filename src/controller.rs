@@ -39,6 +39,9 @@ impl Controller {
                             Event::Key(key) => {
                                 println!("{:?}", key);
                                 match key.code {
+                                    KeyCode::Esc => {
+                                        running.store(false, Ordering::Relaxed);
+                                    }
                                     KeyCode::Up => {
                                         current = match current {
                                             AppState::Stop(s) => {
@@ -80,6 +83,9 @@ impl Controller {
                 }
                 Ok(())
             });
+
+        // Ignore the result here
+        let _ = event_handler.expect("thread panicked!").join();
         Ok(())
     }
 }
