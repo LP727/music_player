@@ -6,6 +6,7 @@
 use crate::audio::is_supported_format;
 
 use core::result::Result::Ok;
+use std::collections::BTreeSet;
 use std::fmt::Display;
 
 use std::path::Path;
@@ -84,10 +85,13 @@ impl Track {
 }
 
 pub trait Library {
-    fn all_tracks(&self) -> Vec<&Track>;
-    fn by_artist(&self, artist_name: &str) -> Vec<&Track>;
-    fn by_album(&self, album_name: &str) -> Vec<&Track>;
-    fn by_list(&self, list_name: &str) -> Vec<&Track>;
+    fn all_tracks(&self) -> Vec<Track>;
+    fn all_artists(&self) -> Vec<String>;
+    fn all_albums(&self) -> Vec<String>;
+    fn albums_by_artist(&self, artist_name: &str) -> Vec<String>;
+    fn tracks_by_artist(&self, artist_name: &str) -> Vec<&Track>;
+    fn tracks_by_album(&self, album_name: &str) -> Vec<&Track>;
+    fn tracks_by_list(&self, list_name: &str) -> Vec<&Track>;
 }
 
 pub struct InMemoryLibrary {
@@ -113,23 +117,88 @@ impl Display for InMemoryLibrary {
 }
 
 impl Library for InMemoryLibrary {
-    fn all_tracks(&self) -> Vec<&Track> {
-        self.tracks.iter().collect()
+    fn all_tracks(&self) -> Vec<Track> {
+        self.tracks.iter().cloned().collect()
     }
-    fn by_artist(&self, artist_name: &str) -> Vec<&Track> {
+    fn all_artists(&self) -> Vec<String> {
+        // let mut artists_set = BTreeSet::<String>::new();
+        // for track in &self.tracks {
+        //     // This clones prior to filtering so it costs an allocate + free on each collision
+        //     artists_set.insert(track.artist.clone());
+        // }
+
+        // equivalent to
+        // let mut artists = Vec::with_capacity(artists_set.len());
+        // for artist in artists_set {
+        //     artists.push(artist);
+        // }
+        // artists
+        //artists_set.into_iter().collect()
+
+        // So a better version is the following:
+        // let mut artists_set = BTreeSet::<&String>::new();
+        // for tracks in &self.tracks {
+        //     // only attempt to push by ref, no insert
+        //     artists_set.insert(&tracks.artist);
+        // }
+
+        // let mut artists = Vec::<String>::with_capacity(artists_set.len());
+        // for artist in artists_set {
+        //     // allocate only in the vector
+        //     artists.push(artist.clone());
+        // }
+        // artists
+
+        // Shortest form
+        //  self.tracks.iter().map(|t|&t.artist): take all artists in tracks (by ref using &) into a
+        // vec collect::<BTreeSet<&String>>(): populate a BTreeSet of strings ref
+        // .into_iter().cloned().collect() clones the strings into a new vector through collect
+        self.tracks
+            .iter()
+            .map(|t| &t.artist)
+            .collect::<BTreeSet<&String>>()
+            .into_iter()
+            .cloned()
+            .collect()
+    }
+
+    fn all_albums(&self) -> Vec<String> {
+        self.tracks
+            .iter()
+            .map(|t| &t.album)
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .cloned()
+            .collect()
+    }
+
+    fn albums_by_artist(&self, artist_name: &str) -> Vec<String> {
+        self.tracks
+            .iter()
+            .filter(|x| x.artist == artist_name)
+            .map(|t| &t.album)
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .cloned()
+            .collect()
+    }
+
+    fn tracks_by_artist(&self, artist_name: &str) -> Vec<&Track> {
         self.tracks
             .iter()
             .filter(|x| x.artist == artist_name)
             .collect()
     }
-    fn by_album(&self, album_name: &str) -> Vec<&Track> {
+
+    // TODO: Assess if we do deep copy all the time or have lifetime parameters in state
+    fn tracks_by_album(&self, album_name: &str) -> Vec<&Track> {
         self.tracks
             .iter()
             .filter(|x| x.album == album_name)
             .collect()
     }
 
-    fn by_list(&self, _list_name: &str) -> Vec<&Track> {
+    fn tracks_by_list(&self, _list_name: &str) -> Vec<&Track> {
         // TODO: Implement list storage in user data using directories
         self.tracks.iter().collect()
     }

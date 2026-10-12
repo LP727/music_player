@@ -39,7 +39,7 @@ impl AudioManager {
     }
 
     /// Starts Playing a new song or resumes playing one, caller must be aware if something is
-    /// loaded
+    /// loaded. Providing a new song clears the existing queue and loads that song.
     ///
     /// # Arguments
     ///
@@ -55,8 +55,18 @@ impl AudioManager {
     /// ```
     pub fn play(&mut self, track: Option<&Track>) {
         if let Some(t) = track {
-            let file = BufReader::new(File::open(&t.file_path).unwrap());
-            let sound_source = Decoder::new(file).unwrap();
+            let file = File::open(&t.file_path).unwrap();
+            let len = file.metadata().unwrap().len();
+            let sound_source = Decoder::builder()
+                .with_data(BufReader::new(file))
+                .with_byte_len(len)
+                .with_seekable(true)
+                .build()
+                .unwrap();
+            println!(
+                "Playing file at {}",
+                &t.file_path.to_str().unwrap_or("bad path")
+            );
 
             println!(
                 "Playing: {} from {}",
@@ -68,6 +78,8 @@ impl AudioManager {
             // add new song
             self.player.append(sound_source);
         }
+
+        println!("Currently {} songs loaded", self.player.len());
 
         // This will have no effect if no source was previously loaded
         self.player.play();

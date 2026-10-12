@@ -5,8 +5,13 @@
 use std::io::ErrorKind;
 use std::{eprintln, fs, path::Path, println};
 
+// TODO: Move into settings
+const SETTINGS_FILE_NAME: &str = "settings.toml";
+
 /// Fetch the user settings file, create one if non was found, calling write settings
 /// against the provided location for settings and storing the provided location for assets (music)
+///
+/// Note: This WILL create a settings.toml file at the provided location
 ///
 /// # Arguments
 ///
@@ -31,7 +36,8 @@ use std::{eprintln, fs, path::Path, println};
 /// let settings =  read_settings(settings_path, asset_path).unwrap();
 /// ```
 pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::Settings> {
-    let text_settings = fs::read_to_string(settings_path);
+    let settings_file = &settings_path.join(SETTINGS_FILE_NAME);
+    let text_settings = fs::read_to_string(settings_file);
 
     if text_settings.is_err() {
         match text_settings.as_ref().unwrap_err().kind() {
@@ -41,8 +47,8 @@ pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::S
                 };
                 if write_settings(settings_path, &new_settings).is_err() {
                     eprintln!(
-                        "Could not read file : `{}` : {}",
-                        settings_path.to_str().unwrap_or(""),
+                        "Could not write file : `{}` : {}",
+                        settings_file.to_str().unwrap_or(""),
                         text_settings.unwrap_err()
                     );
                     return None;
@@ -53,7 +59,7 @@ pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::S
             _ => {
                 eprintln!(
                     "Could not read file : `{}` : {}",
-                    settings_path.to_str().unwrap_or(""),
+                    settings_file.to_str().unwrap_or(""),
                     text_settings.unwrap_err()
                 );
                 return None;
@@ -74,7 +80,7 @@ pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::S
     }
 }
 
-/// Write default settings (currently just the location of the Music)
+/// Write default settings (currently just the location of the Music + SETTINGS_FILE_NAME)
 ///
 /// # Arguments
 ///
@@ -99,8 +105,15 @@ pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::S
 /// let _ = write_settings();
 /// ```
 pub fn write_settings(settings_path: &Path, new_settings: &super::Settings) -> anyhow::Result<()> {
+    let settings_file = settings_path.join(SETTINGS_FILE_NAME);
     let setting = toml::to_string(new_settings)?;
-    fs::write(settings_path, setting)?;
+
+    if let Some(parent) = settings_file.parent() {
+        // recursively creates all mising dir
+        fs::create_dir_all(parent)?;
+    }
+
+    fs::write(settings_file, setting)?;
     Ok(())
 }
 
@@ -156,8 +169,7 @@ mod test {
     #[test]
     fn test_read_settings() -> anyhow::Result<(), String> {
         let asset_path: &Path = Path::new("./assets");
-        let settings_file = &format!("{}/settings.toml", env!("CARGO_MANIFEST_DIR"));
-        let settings_path: &Path = Path::new(settings_file);
+        let settings_path: &Path = Path::new(env!("CARGO_MANIFEST_DIR"));
         match read_settings(settings_path, asset_path) {
             Some(settings) => {
                 if settings.assets_folder_path == String::from("./assets") {
@@ -172,8 +184,7 @@ mod test {
 
     #[test]
     fn test_write_settings() -> anyhow::Result<(), String> {
-        let settings_file = &format!("{}/settings.toml", env!("CARGO_MANIFEST_DIR"));
-        let settings_path: &Path = Path::new(settings_file);
+        let settings_path: &Path = Path::new(env!("CARGO_MANIFEST_DIR"));
         let settings = Settings::default();
 
         match write_settings(settings_path, &settings) {

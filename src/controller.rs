@@ -3,89 +3,128 @@
 //! This module contains the main control loop exposed to the main app.
 //! It holds the state and the AudioManager and exposes commands
 
-use crossterm::event::{Event, KeyCode, poll, read};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::mem;
 use std::time::Duration;
 
 use crate::audio::manager::AudioManager;
-use crate::state::AppState;
+use crate::event::{Command, PlaybackEvent};
+use crate::library::Track;
+// TODO: Implement how to pass a list to the controller, (play)
+// use crate::library::Track;
+use crate::state::{AppState, StopState};
 
-struct Controller {
-    manager: Arc<Mutex<AudioManager>>,
+// TODO: Move into settings
+const RESTART_THRESHOLD: Duration = Duration::from_secs(3);
+
+pub struct Controller {
+    manager: AudioManager,
+    state: AppState,
 }
 
 impl Controller {
     pub fn new() -> Self {
-        let manager = Arc::new(Mutex::new(AudioManager::new()));
-
-        Controller { manager }
+        let manager = AudioManager::new();
+        let state = AppState::new();
+        Controller { manager, state }
     }
 
-    pub fn main_loop(&self) -> anyhow::Result<()> {
-        let running = Arc::new(AtomicBool::new(true));
-        let man = Arc::clone(&self.manager);
+    pub fn handle_command(&mut self, cmd: Command) {
+        let current = mem::replace(&mut self.state, AppState::Stop(StopState {}));
+        self.state = match (current, cmd) {
+            (AppState::Stop(s), Command::Play) => {
+                AppState::Play(s.play(&mut self.manager, Vec::new(), None))
+            }
+            (AppState::Pause(p), Command::Play) => {
+                AppState::Play(p.play(&mut self.manager, Vec::new(), None))
+            }
+            (AppState::Play(p), Command::Pause) => AppState::Pause(p.pause(&self.manager)),
 
-        let event_handler = thread::Builder::new()
-            .name(String::from("Main event handler"))
-            .spawn(move || -> anyhow::Result<()> {
-                let mut current = AppState::new(man);
-                while running.load(Ordering::Acquire) {
-                    if poll(Duration::from_millis(100))? {
-                        match read()? {
-                            Event::FocusGained => println!("FocusGained"),
-                            Event::FocusLost => println!("FocusLost"),
-                            Event::Key(key) => {
-                                println!("{:?}", key);
-                                match key.code {
-                                    KeyCode::Esc => {
-                                        running.store(false, Ordering::Relaxed);
-                                    }
-                                    KeyCode::Up => {
-                                        current = match current {
-                                            AppState::Stop(s) => {
-                                                AppState::Play(s.play(Vec::new(), None))
-                                            }
-                                            AppState::Pause(p) => {
-                                                AppState::Play(p.play(Vec::new(), None))
-                                            }
-                                            AppState::Play(p) => AppState::Play(p),
-                                        };
-                                    }
-                                    KeyCode::Down => {
-                                        current = match current {
-                                            AppState::Stop(s) => AppState::Stop(s), // pause on stop has no effect
-                                            AppState::Pause(p) => AppState::Pause(p),
-                                            AppState::Play(p) => AppState::Pause(p.pause()),
-                                        };
-                                    }
-                                    KeyCode::Left => {
-                                        println!("Implement Previous!");
-                                    }
-                                    KeyCode::Right => {
-                                        println!("Implement Next!");
-                                    }
-                                    KeyCode::Backspace => {
-                                        current = match current {
-                                            AppState::Stop(s) => AppState::Stop(s),
-                                            AppState::Pause(p) => AppState::Stop(p.stop()),
-                                            AppState::Play(p) => AppState::Stop(p.stop()),
-                                        };
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            Event::Mouse(event) => println!("{:?}", event),
-                            _ => {} // do nothing for other events
-                        }
+            (AppState::Play(p), Command::Stop) => AppState::Stop(p.stop(&self.manager)),
+
+            (AppState::Pause(p), Command::Stop) => AppState::Stop(p.stop(&self.manager)),
+
+            (AppState::Pause(mut p), Command::Next) => {
+                if p.index < p.tracks.len() {
+                    p.index += 1;
+                    let nex_index = p.index;
+                    // State calls play on unpause
+                    AppState::Play(p.play(&mut self.manager, Vec::new(), Some(nex_index)))
+                } else {
+                    AppState::Stop(p.stop(&self.manager))
+                }
+            }
+            (AppState::Play(mut p), Command::Next) => {
+                if p.index < p.tracks.len() {
+                    p.index += 1;
+                    self.manager.play(Some(&p.tracks[p.index]));
+                    AppState::Play(p)
+                } else {
+                    AppState::Stop(p.stop(&self.manager))
+                }
+            }
+            (AppState::Pause(mut p), Command::Previous) => {
+                if self.manager.position() > RESTART_THRESHOLD {
+                    match self.manager.seek(Duration::from_secs(0)) {
+                        Ok(_) => println!("Seek successful"),
+                        Err(e) => println!("Encounterer error : {}", e),
+                    }
+                    AppState::Play(p.play(&mut self.manager, Vec::new(), None))
+                } else {
+                    if p.index > 0 {
+                        p.index -= 1;
+                        let nex_index = p.index;
+                        // State calls play on unpause
+                        AppState::Play(p.play(&mut self.manager, Vec::new(), Some(nex_index)))
+                    } else {
+                        AppState::Stop(p.stop(&self.manager))
                     }
                 }
-                Ok(())
-            });
+            }
+            (AppState::Play(mut p), Command::Previous) => {
+                if self.manager.position() > RESTART_THRESHOLD {
+                    match self.manager.seek(Duration::from_secs(0)) {
+                        Ok(_) => println!("Seek successful"),
+                        Err(e) => println!("Encounterer error : {}", e),
+                    }
+                    AppState::Play(p)
+                } else {
+                    if p.index > 0 {
+                        p.index -= 1;
+                        // State calls play on unpause
+                        self.manager.play(Some(&p.tracks[p.index]));
+                        AppState::Play(p)
+                    } else {
+                        AppState::Stop(p.stop(&self.manager))
+                    }
+                }
+            }
+            (other, Command::Quit) => {
+                // No real actions to take here
+                // TODO Implement save state for recovery on open
+                other
+            }
+            (other, _) => other,
+        }
+    }
 
-        // Ignore the result here
-        let _ = event_handler.expect("thread panicked!").join();
-        Ok(())
+    pub fn load_songlist(&mut self, list: Vec<Track>) {
+        // TODO: implement way to do this through command in handle command
+        //
+        let current = mem::replace(&mut self.state, AppState::Stop(StopState {}));
+        self.state = match current {
+            // TODO: ONLY WORKS FROM STOP FOR NOW MERGE IN THE COMMANDS HANDLING ABOVE
+            AppState::Stop(s) => {
+                let temp = s.play(&mut self.manager, list, None);
+                AppState::Pause(temp.pause(&self.manager))
+            }
+
+            other => other,
+        }
+    }
+
+    pub fn handle_playback_event(&self, evt: PlaybackEvent) {
+        match evt {
+            PlaybackEvent::TrackFinished => {} // TODO: Implement
+        }
     }
 }

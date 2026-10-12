@@ -6,12 +6,14 @@
 use std::path::{Path, PathBuf};
 use std::println;
 use std::process;
+use std::sync::mpsc;
 
 use anyhow::Ok;
 use directories::{ProjectDirs, UserDirs};
-use music_player::audio::manager::AudioManager;
+use music_player::controller::Controller;
 use music_player::library::{InMemoryLibrary, Library};
 use music_player::settings::{Settings, read_settings};
+use music_player::ui::{main_loop, spawn_input_thread};
 
 fn main() -> anyhow::Result<()> {
     // Get the user's music directory location
@@ -46,16 +48,16 @@ fn main() -> anyhow::Result<()> {
 
     // Scan for music
     let song_lib = InMemoryLibrary::new(assets_path);
-    println!("{}", song_lib);
 
-    let mut man = AudioManager::new();
+    let mut controller = Controller::new();
+    controller.load_songlist(song_lib.all_tracks());
 
-    for track in song_lib.all_tracks() {
-        man.play(Some(track));
-    }
+    let (tx, rx) = mpsc::channel();
+    let handle1 = spawn_input_thread(tx);
+    let handle2 = main_loop(controller, rx);
 
-    // TODO: Set state
-
+    _ = handle1.join().unwrap();
+    _ = handle2.join().unwrap();
     // TODO: Start UI
 
     Ok(())

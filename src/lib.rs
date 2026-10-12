@@ -5,6 +5,7 @@
 
 pub mod audio;
 pub mod controller;
+pub mod event;
 pub mod library;
 pub mod settings;
 pub mod state;

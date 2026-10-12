@@ -36,6 +36,11 @@ yt-dlp -x --audio-format mp3 --audio-quality 0   --embed-metadata --embed-thumbn
 ```
 
 ## Building
+Building is straighforward for now as there are no specific features
+```bash
+cargo build
+```
+
 
 ## Running
 

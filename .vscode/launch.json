@@ -17,7 +17,7 @@
       "request": "launch",
       "name": "Debug Tests",
       "cargo": {
-        "args": ["test", "--no-run", "--lib"]
+        "args": ["test", "--lib"]
       },
       "program": "${cargo:program}",
       "args": ["${input:targetTest}"],
