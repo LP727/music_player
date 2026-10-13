@@ -5,7 +5,10 @@ use std::{sync::mpsc, thread::JoinHandle};
 
 use crate::controller::Controller;
 use crate::event::{AppEvent, Command};
+
 use crossterm::event::{Event, KeyCode, poll, read};
+use log::debug;
+
 use std::thread;
 use std::time::Duration;
 
@@ -51,12 +54,12 @@ pub fn spawn_input_thread(tx: mpsc::Sender<AppEvent>) -> JoinHandle<anyhow::Resu
                 if poll(Duration::from_millis(100))? {
                     match read()? {
                         // Focus & Mouse need crossterm::execute
-                        Event::FocusGained => println!("FocusGained"), // test
-                        Event::FocusLost => println!("FocusLost"),     // test
-                        Event::Mouse(event) => println!("{:?}", event), // test
+                        Event::FocusGained => debug!("FocusGained"), // test
+                        Event::FocusLost => debug!("FocusLost"),     // test
+                        Event::Mouse(event) => debug!("{:?}", event), // test
                         Event::Key(key) => {
                             if let Some(cmd) = translate_key(key.code) {
-                                println!("Sending command{:?}", cmd);
+                                debug!("Sending command{:?}", cmd);
                                 tx.send(AppEvent::Command(cmd))?; // channel closed => return/break
                             }
                         }
@@ -76,11 +79,11 @@ pub fn main_loop(mut ctrl: Controller, rx: mpsc::Receiver<AppEvent>) -> JoinHand
             for evt in rx {
                 match evt {
                     AppEvent::Command(cmd) => {
-                        println!("Processing user command: {:?}", cmd);
+                        debug!("Processing user command: {:?}", cmd);
                         ctrl.handle_command(cmd);
                     }
                     AppEvent::Playback(evt) => {
-                        println!("Processing playback event: {:?}", evt);
+                        debug!("Processing playback event: {:?}", evt);
                         ctrl.handle_playback_event(evt);
                     }
                 }

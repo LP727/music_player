@@ -4,24 +4,28 @@
 //! Start the app and handles the teardown.
 
 use std::path::{Path, PathBuf};
-use std::println;
 use std::process;
 use std::sync::mpsc;
 
 use anyhow::Ok;
 use directories::{ProjectDirs, UserDirs};
+use env_logger::Env;
+use log::{debug, error};
+
 use music_player::controller::Controller;
 use music_player::library::{InMemoryLibrary, Library};
 use music_player::settings::{Settings, read_settings};
 use music_player::ui::{main_loop, spawn_input_thread};
 
 fn main() -> anyhow::Result<()> {
+    env_logger::Builder::from_env(Env::default().default_filter_or("error")).init();
+
     // Get the user's music directory location
     let music_path: PathBuf;
     if let Some(user_path) = UserDirs::new() {
         music_path = user_path.audio_dir().unwrap().to_path_buf();
     } else {
-        eprintln!("Unable to access user directories");
+        error!("Unable to access user directories");
         process::exit(1)
     }
 
@@ -30,17 +34,17 @@ fn main() -> anyhow::Result<()> {
     if let Some(project_path) = ProjectDirs::from("com", "lpbeliveau", "music_app") {
         settings_path = project_path.config_dir().to_path_buf();
     } else {
-        eprintln!("Unable to access project directories");
+        error!("Unable to access project directories");
         process::exit(1)
     }
 
     // Temporary debug logs
-    println!("{:?}", &music_path);
-    println!("{:?}", &settings_path);
+    debug!("{:?}", &music_path);
+    debug!("{:?}", &settings_path);
 
     // Load user settings
     let user_settings: Settings = read_settings(&settings_path, &music_path).unwrap_or_else(|| {
-        println!("Failed to extract settings");
+        error!("Failed to extract settings");
         Settings::default()
     });
 

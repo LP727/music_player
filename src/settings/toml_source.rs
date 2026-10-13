@@ -2,8 +2,9 @@
 //!
 //! This module exposes methods to extract settings from a toml file
 
+use log::{debug, error};
 use std::io::ErrorKind;
-use std::{eprintln, fs, path::Path, println};
+use std::{fs, path::Path};
 
 // TODO: Move into settings
 const SETTINGS_FILE_NAME: &str = "settings.toml";
@@ -46,7 +47,7 @@ pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::S
                     assets_folder_path: music_path.to_path_buf(),
                 };
                 if write_settings(settings_path, &new_settings).is_err() {
-                    eprintln!(
+                    error!(
                         "Could not write file : `{}` : {}",
                         settings_file.to_str().unwrap_or(""),
                         text_settings.unwrap_err()
@@ -57,7 +58,7 @@ pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::S
                 return Some(new_settings);
             }
             _ => {
-                eprintln!(
+                error!(
                     "Could not read file : `{}` : {}",
                     settings_file.to_str().unwrap_or(""),
                     text_settings.unwrap_err()
@@ -66,7 +67,7 @@ pub fn read_settings(settings_path: &Path, music_path: &Path) -> Option<super::S
             }
         }
     } else {
-        println!("{:?}", text_settings);
+        debug!("{:?}", text_settings);
 
         let settings: Option<super::Settings> = match toml::from_str::<super::Settings>(
             text_settings

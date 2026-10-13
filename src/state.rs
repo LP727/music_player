@@ -4,6 +4,7 @@
 //! Things like the current index, the list to track, volume, etc.
 
 use crate::{audio::manager::AudioManager, library::Track};
+use log::debug;
 
 pub enum AppState {
     Stop(StopState),
@@ -60,7 +61,7 @@ impl StopState {
             man.play(Some(&tracks[index.unwrap_or(0)]));
         }
 
-        println!("Going from Stop to Play");
+        debug!("Going from Stop to Play");
         PlayState {
             index: index.unwrap_or(0),
             tracks,
@@ -103,7 +104,7 @@ impl PauseState {
             // if it has one loaded
             man.play(None);
         }
-        println!("Going from Pause to Play");
+        debug!("Going from Pause to Play");
         PlayState {
             index: index.unwrap_or(0),
             tracks: self.tracks,
@@ -112,7 +113,7 @@ impl PauseState {
 
     pub fn stop(self, man: &AudioManager) -> StopState {
         man.stop();
-        println!("Going from Pause to Stop");
+        debug!("Going from Pause to Stop");
         StopState {}
     }
 }
@@ -120,7 +121,7 @@ impl PauseState {
 impl PlayState {
     pub fn pause(self, man: &AudioManager) -> PauseState {
         man.pause();
-        println!("Going from Play to Pause");
+        debug!("Going from Play to Pause");
         PauseState {
             index: self.index,
             tracks: self.tracks,
@@ -129,7 +130,7 @@ impl PlayState {
 
     pub fn stop(self, man: &AudioManager) -> StopState {
         man.stop();
-        println!("Going from Play to Stop");
+        debug!("Going from Play to Stop");
         StopState {}
     }
 }

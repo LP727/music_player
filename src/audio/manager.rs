@@ -5,8 +5,10 @@
 use std::io::BufReader;
 use std::{fs::File, time::Duration};
 
-use crate::library::Track;
+use log::debug;
 use rodio::{Decoder, MixerDeviceSink, Player};
+
+use crate::library::Track;
 
 pub struct AudioManager {
     player: Player,
@@ -63,12 +65,12 @@ impl AudioManager {
                 .with_seekable(true)
                 .build()
                 .unwrap();
-            println!(
+            debug!(
                 "Playing file at {}",
                 &t.file_path.to_str().unwrap_or("bad path")
             );
 
-            println!(
+            debug!(
                 "Playing: {} from {}",
                 track.clone().unwrap().artist,
                 track.clone().unwrap().album
@@ -79,7 +81,7 @@ impl AudioManager {
             self.player.append(sound_source);
         }
 
-        println!("Currently {} songs loaded", self.player.len());
+        debug!("Currently {} songs loaded", self.player.len());
 
         // This will have no effect if no source was previously loaded
         self.player.play();

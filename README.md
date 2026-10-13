@@ -38,6 +38,8 @@ yt-dlp -x --audio-format mp3 --audio-quality 0   --embed-metadata --embed-thumbn
 ## Building
 Building is straighforward for now as there are no specific features
 ```bash
+# Builds with RUST_LOG=error by default, here we build in debug
+export RUST_LOG=debug
 cargo build
 ```
 

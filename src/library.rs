@@ -16,6 +16,7 @@ use std::{path::PathBuf, println};
 
 use lofty::prelude::ItemKey;
 use lofty::{file::AudioFile, file::TaggedFileExt, read_from_path};
+use log::{debug, error};
 
 use walkdir::WalkDir;
 
@@ -216,14 +217,14 @@ pub fn scan_assets(asset_path: &Path) -> Vec<Track> {
             let track = match Track::from_path(&entry_path) {
                 Ok(value) => value,
                 Err(e) => {
-                    eprintln!("Could not read file : `{:?}` : {}", entry_path, e);
+                    error!("Could not read file : `{:?}` : {}", entry_path, e);
                     continue;
                 }
             };
 
             songs.push(track);
         } else {
-            println!("Ignored file: {}", entry_path.to_str().unwrap());
+            debug!("Ignored file: {}", entry_path.to_str().unwrap());
         }
     }
     songs

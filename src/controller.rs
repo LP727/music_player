@@ -12,6 +12,7 @@ use crate::library::Track;
 // TODO: Implement how to pass a list to the controller, (play)
 // use crate::library::Track;
 use crate::state::{AppState, StopState};
+use log::{debug, error};
 
 // TODO: Move into settings
 const RESTART_THRESHOLD: Duration = Duration::from_secs(3);
@@ -65,8 +66,8 @@ impl Controller {
             (AppState::Pause(mut p), Command::Previous) => {
                 if self.manager.position() > RESTART_THRESHOLD {
                     match self.manager.seek(Duration::from_secs(0)) {
-                        Ok(_) => println!("Seek successful"),
-                        Err(e) => println!("Encounterer error : {}", e),
+                        Ok(_) => debug!("Seek successful"),
+                        Err(e) => error!("Encounterer error : {}", e),
                     }
                     AppState::Play(p.play(&mut self.manager, Vec::new(), None))
                 } else {
@@ -83,8 +84,8 @@ impl Controller {
             (AppState::Play(mut p), Command::Previous) => {
                 if self.manager.position() > RESTART_THRESHOLD {
                     match self.manager.seek(Duration::from_secs(0)) {
-                        Ok(_) => println!("Seek successful"),
-                        Err(e) => println!("Encounterer error : {}", e),
+                        Ok(_) => debug!("Seek successful"),
+                        Err(e) => error!("Encounterer error : {}", e),
                     }
                     AppState::Play(p)
                 } else {
