@@ -4,10 +4,11 @@
 //! It holds the state and the AudioManager and exposes commands
 
 use std::mem;
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 
 use crate::audio::manager::AudioManager;
-use crate::event::{Command, PlaybackEvent};
+use crate::event::{AppEvent, Command, PlaybackEvent};
 use crate::library::Track;
 // TODO: Implement how to pass a list to the controller, (play)
 // use crate::library::Track;
@@ -23,14 +24,14 @@ pub struct Controller {
 }
 
 impl Controller {
-    pub fn new() -> Self {
-        let manager = AudioManager::new();
+    pub fn new(event_channel: Sender<AppEvent>) -> Self {
+        let manager = AudioManager::new(event_channel);
         let state = AppState::new();
         Controller { manager, state }
     }
 
-    pub fn handle_command(&mut self, cmd: Command) {
-        let current = mem::replace(&mut self.state, AppState::Stop(StopState {}));
+    pub fn handle_command(&mut self, cmd: &Command) {
+        let current = mem::replace(&mut self.state, AppState::new());
         self.state = match (current, cmd) {
             (AppState::Stop(s), Command::Play) => {
                 AppState::Play(s.play(&mut self.manager, Vec::new(), None))
@@ -100,8 +101,8 @@ impl Controller {
                 }
             }
             (other, Command::Quit) => {
-                // No real actions to take here
-                // TODO Implement save state for recovery on open
+                // stop playback here, terminates the thread, which will drop the channel tx clone
+                self.manager.stop();
                 other
             }
             (other, _) => other,
@@ -111,7 +112,7 @@ impl Controller {
     pub fn load_songlist(&mut self, list: Vec<Track>) {
         // TODO: implement way to do this through command in handle command
         //
-        let current = mem::replace(&mut self.state, AppState::Stop(StopState {}));
+        let current = mem::replace(&mut self.state, AppState::new());
         self.state = match current {
             // TODO: ONLY WORKS FROM STOP FOR NOW MERGE IN THE COMMANDS HANDLING ABOVE
             AppState::Stop(s) => {
@@ -123,9 +124,11 @@ impl Controller {
         }
     }
 
-    pub fn handle_playback_event(&self, evt: PlaybackEvent) {
+    pub fn handle_playback_event(&mut self, evt: PlaybackEvent) {
         match evt {
-            PlaybackEvent::TrackFinished => {} // TODO: Implement
+            PlaybackEvent::TrackFinished => {
+                self.handle_command(&Command::Next);
+            }
         }
     }
 }

@@ -3,6 +3,7 @@
 //! Main module that takes in arguments, initializes various modules
 //! Start the app and handles the teardown.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::mpsc;
@@ -10,15 +11,69 @@ use std::sync::mpsc;
 use anyhow::Ok;
 use directories::{ProjectDirs, UserDirs};
 use env_logger::Env;
-use log::{debug, error};
+use log::{Level, debug, error};
 
 use music_player::controller::Controller;
 use music_player::library::{InMemoryLibrary, Library};
 use music_player::settings::{Settings, read_settings};
 use music_player::ui::{main_loop, spawn_input_thread};
 
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+
+struct RawModeGuard;
+
+impl RawModeGuard {
+    fn new() -> RawModeGuard {
+        enable_raw_mode().expect("Raw mode enable Failed");
+        debug!("Terminal Raw Mode enabled");
+        Self
+    }
+}
+
+impl Drop for RawModeGuard {
+    fn drop(&mut self) {
+        disable_raw_mode().expect("Raw mode disable Failed");
+        debug!("Terminal Raw Mode disabled");
+    }
+}
+
 fn main() -> anyhow::Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("error")).init();
+    // This ensure we restore the terminal on exit
+    let _raw_guard = RawModeGuard::new();
+
+    // Default form doesn't have the \r on raw mode so we use a custom format
+    let mut logger_builder =
+        env_logger::Builder::from_env(Env::default().default_filter_or("error"));
+    logger_builder
+        .format(|buf, record| {
+            let level_style = buf.default_level_style(record.level());
+            let style = anstyle::Style::new()
+                .fg_color(Some(anstyle::AnsiColor::Green.into()))
+                .bg_color(Some(anstyle::AnsiColor::BrightBlack.into()));
+
+            if record.level() == Level::Error {
+                writeln!(
+                    buf,
+                    "[{} {level_style}{}{level_style:#} {}] - {}\r\n {style} {} Line: {}{style} \r",
+                    buf.timestamp(),
+                    record.level(),
+                    record.metadata().target(),
+                    record.args(),
+                    record.file().unwrap_or("Unknown"),
+                    record.line().unwrap_or(0xFF),
+                )
+            } else {
+                writeln!(
+                    buf,
+                    "[{} {level_style}{}{level_style:#} {}] - {}\r",
+                    buf.timestamp(),
+                    record.level(),
+                    record.metadata().target(),
+                    record.args(),
+                )
+            }
+        })
+        .init();
 
     // Get the user's music directory location
     let music_path: PathBuf;
@@ -53,11 +108,12 @@ fn main() -> anyhow::Result<()> {
     // Scan for music
     let song_lib = InMemoryLibrary::new(assets_path);
 
-    let mut controller = Controller::new();
+    let (ui_tx, rx) = mpsc::channel();
+
+    let mut controller = Controller::new(ui_tx.clone());
     controller.load_songlist(song_lib.all_tracks());
 
-    let (tx, rx) = mpsc::channel();
-    let handle1 = spawn_input_thread(tx);
+    let handle1 = spawn_input_thread(ui_tx);
     let handle2 = main_loop(controller, rx);
 
     _ = handle1.join().unwrap();

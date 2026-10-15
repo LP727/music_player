@@ -9,8 +9,12 @@
         "args": ["build"]
       },
       "program": "${cargo:program}",
+
+      "env": {
+        "RUST_LOG": "debug"
+      },
       "args": [],
-      "stopOnEntry": true
+      "stopOnEntry": false
     },
     {
       "type": "lldb",

@@ -3,17 +3,27 @@
 //! AudioManager, struct to handle the playback state and relevant data (Source, Since, Track)
 
 use std::io::BufReader;
+use std::sync::mpsc::Sender;
+use std::sync::{
+    Arc,
+    atomic::{AtomicU64, Ordering},
+};
+use std::thread;
 use std::{fs::File, time::Duration};
 
 use log::debug;
 use rodio::{Decoder, MixerDeviceSink, Player};
 
+use crate::event::{AppEvent, PlaybackEvent};
 use crate::library::Track;
 
 pub struct AudioManager {
-    player: Player,
+    player: Arc<Player>,
     // dropping would clear the queue, we need to keep this
     _device: MixerDeviceSink,
+    // atomic counter to keep track of what is playing and what has ended for the thread
+    append_count: Arc<AtomicU64>,
+    event_channel: Sender<AppEvent>,
 }
 
 /// Describe this function.
@@ -31,12 +41,15 @@ pub struct AudioManager {
 /// man.play(track);
 /// ```
 impl AudioManager {
-    pub fn new() -> Self {
+    pub fn new(event_channel: Sender<AppEvent>) -> Self {
         let sink = rodio::DeviceSinkBuilder::open_default_sink().expect("Failed to open sink");
-        let player = rodio::Player::connect_new(sink.mixer());
+        let player = Arc::<Player>::new(rodio::Player::connect_new(sink.mixer()));
         Self {
             player,
+            // We need to hold the sink, it holds the audio thread, dropping kills the audio
             _device: sink,
+            append_count: Arc::new(AtomicU64::new(0)),
+            event_channel,
         }
     }
 
@@ -59,6 +72,8 @@ impl AudioManager {
         if let Some(t) = track {
             let file = File::open(&t.file_path).unwrap();
             let len = file.metadata().unwrap().len();
+
+            // With seekable needed for the previous functionality to seek begining
             let sound_source = Decoder::builder()
                 .with_data(BufReader::new(file))
                 .with_byte_len(len)
@@ -75,6 +90,8 @@ impl AudioManager {
                 track.clone().unwrap().artist,
                 track.clone().unwrap().album
             );
+            // bump the append count
+            self.append_count.fetch_add(1, Ordering::AcqRel);
             // clear exisiting queue
             self.player.clear();
             // add new song
@@ -86,8 +103,7 @@ impl AudioManager {
         // This will have no effect if no source was previously loaded
         self.player.play();
 
-        // TODO: Remove, this makes play blocking now, need something else
-        //self.player.sleep_until_end();
+        self.monitor_playing();
         return;
     }
 
@@ -133,6 +149,25 @@ impl AudioManager {
     pub fn is_stopped(&self) -> bool {
         self.player.empty()
     }
+
+    fn monitor_playing(&self) {
+        let tx_channel = self.event_channel.clone();
+        let player = Arc::clone(&self.player);
+        let start_count = self.append_count.load(Ordering::Acquire);
+        let append_count = Arc::clone(&self.append_count);
+        thread::Builder::new()
+            .name(String::from("Wait for song end"))
+            .spawn(move || {
+                player.sleep_until_end();
+
+                // this allows to only send an event if the end event wasn't already event generated
+                if start_count == append_count.load(Ordering::Acquire) {
+                    // On quit, the rx will be gone first so failure here is accepted
+                    let _ = tx_channel.send(AppEvent::Playback(PlaybackEvent::TrackFinished));
+                }
+            })
+            .expect("Failed to start song end monitoring");
+    }
 }
 
 #[cfg(test)]
@@ -140,6 +175,7 @@ mod test {
 
     use crate::{audio::manager::AudioManager, library::Track};
     use std::path::Path;
+    use std::sync::mpsc;
 
     #[test]
     fn play_test() -> anyhow::Result<(), String> {
@@ -148,7 +184,8 @@ mod test {
         ))
         .expect("Failed to create the Track");
 
-        let mut man = AudioManager::new();
+        let (tx, _rx) = mpsc::channel();
+        let mut man = AudioManager::new(tx);
         man.play(Some(&track));
         return Ok(());
     }

@@ -4,7 +4,7 @@ pub enum AppEvent {
     Playback(PlaybackEvent),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Play,
     Pause,

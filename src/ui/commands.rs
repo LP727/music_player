@@ -35,7 +35,7 @@ use std::time::Duration;
 /// ```
 pub fn translate_key(code: KeyCode) -> Option<Command> {
     match code {
-        KeyCode::Esc => Some(Command::Quit),
+        KeyCode::Char('q') => Some(Command::Quit),
         KeyCode::Up => Some(Command::Play),
         KeyCode::Down => Some(Command::Pause),
         KeyCode::Left => Some(Command::Previous),
@@ -60,10 +60,12 @@ pub fn spawn_input_thread(tx: mpsc::Sender<AppEvent>) -> JoinHandle<anyhow::Resu
                         Event::Key(key) => {
                             if let Some(cmd) = translate_key(key.code) {
                                 debug!("Sending command{:?}", cmd);
-                                tx.send(AppEvent::Command(cmd))?; // channel closed => return/break
+                                tx.send(AppEvent::Command(cmd.clone()))?;
+                                if cmd == Command::Quit {
+                                    return Ok(());
+                                }
                             }
                         }
-                        // TODO: Implement quiting here
                         _ => {} // do nothing for other events
                     }
                 }
@@ -80,7 +82,10 @@ pub fn main_loop(mut ctrl: Controller, rx: mpsc::Receiver<AppEvent>) -> JoinHand
                 match evt {
                     AppEvent::Command(cmd) => {
                         debug!("Processing user command: {:?}", cmd);
-                        ctrl.handle_command(cmd);
+                        ctrl.handle_command(&cmd);
+                        if cmd == Command::Quit {
+                            return ();
+                        }
                     }
                     AppEvent::Playback(evt) => {
                         debug!("Processing playback event: {:?}", evt);

@@ -211,20 +211,24 @@ pub fn scan_assets(asset_path: &Path) -> Vec<Track> {
     for entry in WalkDir::new(asset_path).into_iter().filter_map(|e| e.ok())
     // ignore errors like denied permissions
     {
-        let entry_path: PathBuf = entry.into_path();
-        // Rely on Symphonia to verify support as Lofty support doesn't guarantee audio support
-        if is_supported_format(&entry_path) {
-            let track = match Track::from_path(&entry_path) {
-                Ok(value) => value,
-                Err(e) => {
-                    error!("Could not read file : `{:?}` : {}", entry_path, e);
-                    continue;
-                }
-            };
-
-            songs.push(track);
+        if entry.file_type().is_dir() {
+            debug!("Ignored dir: {}", entry.file_name().display());
         } else {
-            debug!("Ignored file: {}", entry_path.to_str().unwrap());
+            let entry_path: PathBuf = entry.into_path();
+            // Rely on Symphonia to verify support as Lofty support doesn't guarantee audio support
+            if is_supported_format(&entry_path) {
+                let track = match Track::from_path(&entry_path) {
+                    Ok(value) => value,
+                    Err(e) => {
+                        error!("Could not read file : `{:?}` : {}", entry_path, e);
+                        continue;
+                    }
+                };
+
+                songs.push(track);
+            } else {
+                debug!("Ignored file: {}", entry_path.to_str().unwrap());
+            }
         }
     }
     songs

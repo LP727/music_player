@@ -139,6 +139,7 @@ impl PlayState {
 mod test {
 
     use std::path::Path;
+    use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
 
@@ -147,7 +148,8 @@ mod test {
     #[test]
     fn state_cycle_test() -> anyhow::Result<(), String> {
         // Audio manager init
-        let mut man = AudioManager::new();
+        let (tx, _rx) = mpsc::channel();
+        let mut man = AudioManager::new(tx);
 
         // path list
         let assets_dir = &format!("{}/assets", env!("CARGO_MANIFEST_DIR"));
