@@ -12,7 +12,7 @@ use crate::event::{AppEvent, Command, PlaybackEvent};
 use crate::library::Track;
 // TODO: Implement how to pass a list to the controller, (play)
 // use crate::library::Track;
-use crate::state::{AppState, StopState};
+use crate::state::AppState;
 use log::{debug, error};
 
 // TODO: Move into settings

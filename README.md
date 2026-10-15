@@ -36,7 +36,9 @@ yt-dlp -x --audio-format mp3 --audio-quality 0   --embed-metadata --embed-thumbn
 ```
 
 ## Building
-Building is straighforward for now as there are no specific features
+Prior to building, set the RUST_LOG environment variable to tune the log level of the app.
+By default, the log level will be "error".
+
 ```bash
 # Builds with RUST_LOG=error by default, here we build in debug
 export RUST_LOG=debug
@@ -45,5 +47,23 @@ cargo build
 
 
 ## Running
+Running currently only puts the app on Pause for a whole library play.
+```bash
+# Builds with RUST_LOG=error by default, here we build in info to get some playing feedback
+export RUST_LOG=info
+cargo run
+```
 
 ## Usage
+Currently featuring a "Pseudo TUI"
+Loads all the songs in the user Music folder and puts itself in pause.
+
+### Commands
+- UpArrowKey: _Play_
+- DownArrowKey: _Pause_
+- LeftArrowKey: _Previous_
+- RightArrowKey: _Next_
+- 'q': _Quit_
+- Backspace: _Stop_
+  
+Note: As there are no browsing or loading implemented, _Stop_ puts the app in a unuseable position
