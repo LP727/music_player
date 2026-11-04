@@ -12,6 +12,7 @@ pub enum Command {
     Next,
     Previous,
     Quit,
+    SelectIndex(usize),
     // ...
 }
 

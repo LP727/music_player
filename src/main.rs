@@ -13,8 +13,7 @@ use directories::{ProjectDirs, UserDirs};
 use env_logger::Env;
 use log::{Level, debug, error};
 
-use music_player::controller::Controller;
-use music_player::library::{InMemoryLibrary, Library};
+use music_player::library::InMemoryLibrary;
 use music_player::settings::{Settings, read_settings};
 use music_player::ui::{main_loop, spawn_input_thread};
 
@@ -108,13 +107,10 @@ fn main() -> anyhow::Result<()> {
     // Scan for music
     let song_lib = InMemoryLibrary::new(assets_path);
 
-    let (ui_tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel();
 
-    let mut controller = Controller::new(ui_tx.clone());
-    controller.load_songlist(song_lib.all_tracks());
-
-    let handle1 = spawn_input_thread(ui_tx);
-    let handle2 = main_loop(controller, rx);
+    let handle1 = spawn_input_thread(tx.clone());
+    let handle2 = main_loop(song_lib, tx, rx);
 
     _ = handle1.join().unwrap();
     _ = handle2.join().unwrap();

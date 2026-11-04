@@ -6,6 +6,7 @@
 //! an interface to easily swap between.
 
 mod commands;
+pub mod ui_state;
 
 pub use commands::main_loop;
 pub use commands::spawn_input_thread;

@@ -90,9 +90,9 @@ pub trait Library {
     fn all_artists(&self) -> Vec<String>;
     fn all_albums(&self) -> Vec<String>;
     fn albums_by_artist(&self, artist_name: &str) -> Vec<String>;
-    fn tracks_by_artist(&self, artist_name: &str) -> Vec<&Track>;
-    fn tracks_by_album(&self, album_name: &str) -> Vec<&Track>;
-    fn tracks_by_list(&self, list_name: &str) -> Vec<&Track>;
+    fn tracks_by_artist(&self, artist_name: &str) -> Vec<Track>;
+    fn tracks_by_album(&self, album_name: &str) -> Vec<Track>;
+    fn tracks_by_list(&self, list_name: &str) -> Vec<Track>;
 }
 
 pub struct InMemoryLibrary {
@@ -184,24 +184,26 @@ impl Library for InMemoryLibrary {
             .collect()
     }
 
-    fn tracks_by_artist(&self, artist_name: &str) -> Vec<&Track> {
+    fn tracks_by_artist(&self, artist_name: &str) -> Vec<Track> {
         self.tracks
             .iter()
             .filter(|x| x.artist == artist_name)
+            .cloned()
             .collect()
     }
 
     // TODO: Assess if we do deep copy all the time or have lifetime parameters in state
-    fn tracks_by_album(&self, album_name: &str) -> Vec<&Track> {
+    fn tracks_by_album(&self, album_name: &str) -> Vec<Track> {
         self.tracks
             .iter()
             .filter(|x| x.album == album_name)
+            .cloned()
             .collect()
     }
 
-    fn tracks_by_list(&self, _list_name: &str) -> Vec<&Track> {
+    fn tracks_by_list(&self, _list_name: &str) -> Vec<Track> {
         // TODO: Implement list storage in user data using directories
-        self.tracks.iter().collect()
+        self.tracks.iter().cloned().collect()
     }
 }
 

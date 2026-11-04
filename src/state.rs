@@ -28,6 +28,19 @@ impl AppState {
     pub fn new() -> AppState {
         AppState::Stop(StopState {})
     }
+
+    pub fn play(
+        self,
+        man: &mut AudioManager,
+        tracks: Vec<Track>,
+        index: Option<usize>,
+    ) -> AppState {
+        match self {
+            AppState::Pause(p) => AppState::Play(p.play(man, tracks, index)),
+            AppState::Play(p) => AppState::Play(p.play(man, tracks, index)),
+            AppState::Stop(s) => AppState::Play(s.play(man, tracks, index)),
+        }
+    }
 }
 
 impl StopState {
@@ -132,6 +145,18 @@ impl PlayState {
         man.stop();
         debug!("Going from Play to Stop");
         StopState {}
+    }
+
+    // Play when already in play state, to modify the playlist
+    pub fn play(
+        self,
+        man: &mut AudioManager,
+        tracks: Vec<Track>,
+        index: Option<usize>,
+    ) -> PlayState {
+        let idx = index.unwrap_or(0);
+        man.play(Some(&tracks[idx]));
+        PlayState { index: idx, tracks }
     }
 }
 
