@@ -6,8 +6,7 @@ pub enum AppEvent {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
-    Play,
-    Pause,
+    PlayPause,
     Stop,
     Next,
     Previous,

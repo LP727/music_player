@@ -65,10 +65,11 @@ pub trait UiDisplay {
     }
 
     fn lines(&self) -> Vec<String> {
-        let mut lines = self.items();
+        let mut lines = Vec::new();
         if self.has_all() {
             lines.push(String::from("All"));
         }
+        lines.extend(self.items().into_iter()); // consumes the String
         lines.extend(self.footer().iter().map(|f| f.label().to_string()));
         lines
     }
@@ -148,6 +149,18 @@ impl UiDisplay for UIState {
             UIState::AllArtists(s) => s.items(),
             UIState::AllSongs(s) => s.items(),
             UIState::BrowseMenu(s) => s.items(),
+        }
+    }
+
+    fn has_all(&self) -> bool {
+        match self {
+            UIState::AlbumSongs(s) => s.has_all(),
+            UIState::AllAlbum(s) => s.has_all(),
+            UIState::ArtistAlbums(s) => s.has_all(),
+            UIState::ArtistSongs(s) => s.has_all(),
+            UIState::AllArtists(s) => s.has_all(),
+            UIState::AllSongs(s) => s.has_all(),
+            UIState::BrowseMenu(s) => s.has_all(),
         }
     }
 

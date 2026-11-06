@@ -5,6 +5,7 @@
 
 use crate::{audio::manager::AudioManager, library::Track};
 use log::debug;
+use nonempty::NonEmpty;
 
 pub enum AppState {
     Stop(StopState),
@@ -38,7 +39,10 @@ impl AppState {
         match self {
             AppState::Pause(p) => AppState::Play(p.play(man, tracks, index)),
             AppState::Play(p) => AppState::Play(p.play(man, tracks, index)),
-            AppState::Stop(s) => AppState::Play(s.play(man, tracks, index)),
+            AppState::Stop(s) => match NonEmpty::from_vec(tracks) {
+                Some(tracks) => AppState::Play(s.play(man, tracks, index)),
+                None => AppState::Stop(s),
+            },
         }
     }
 }
@@ -67,7 +71,7 @@ impl StopState {
     pub fn play(
         self,
         man: &mut AudioManager,
-        tracks: Vec<Track>,
+        tracks: NonEmpty<Track>,
         index: Option<usize>,
     ) -> PlayState {
         if tracks.len() > 0 {
@@ -77,7 +81,7 @@ impl StopState {
         debug!("Going from Stop to Play");
         PlayState {
             index: index.unwrap_or(0),
-            tracks,
+            tracks: tracks.into(),
         }
     }
 }
@@ -168,6 +172,8 @@ mod test {
     use std::thread;
     use std::time::Duration;
 
+    use nonempty::NonEmpty;
+
     use crate::{audio::manager::AudioManager, library::scan_assets, state::AppState};
 
     #[test]
@@ -190,7 +196,7 @@ mod test {
         };
         assert!(man.is_stopped());
 
-        let state = state.play(&mut man, songs.clone(), None);
+        let state = state.play(&mut man, NonEmpty::from_vec(songs.clone()).unwrap(), None);
         assert_eq!(state.index, 0);
         assert_eq!(state.tracks.len(), songs.len());
         assert!(man.is_playing());
@@ -215,7 +221,11 @@ mod test {
         thread::sleep(Duration::from_millis(100));
         assert!(man.is_stopped());
 
-        let state = state.play(&mut man, songs.clone(), Some(1));
+        let state = state.play(
+            &mut man,
+            NonEmpty::from_vec(songs.clone()).unwrap(),
+            Some(1),
+        );
         assert_eq!(state.index, 1);
         thread::sleep(Duration::from_millis(300));
         assert!(man.position() > Duration::from_millis(200));
@@ -231,7 +241,11 @@ mod test {
         assert!(man.is_stopped());
 
         // consecutive calls test, just expecting no crash
-        let state = state.play(&mut man, songs.clone(), Some(1));
+        let state = state.play(
+            &mut man,
+            NonEmpty::from_vec(songs.clone()).unwrap(),
+            Some(1),
+        );
         let state = state.pause(&man);
         let _state = state.stop(&man);
 

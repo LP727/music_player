@@ -1126,6 +1126,7 @@ dependencies = [
  "env_logger",
  "lofty",
  "log",
+ "nonempty",
  "ratatui",
  "rodio",
  "serde",
@@ -1185,6 +1186,12 @@ dependencies = [
  "memchr",
  "minimal-lexical",
 ]
+
+[[package]]
+name = "nonempty"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9737e026353e5cd0736f98eddae28665118eb6f6600902a7f50db585621fecb6"
 
 [[package]]
 name = "num-bigint"

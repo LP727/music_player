@@ -13,7 +13,6 @@ use log::debug;
 use std::thread;
 use std::time::Duration;
 
-// TODO: Modify and re-insert into input_thread
 /// Key to command translation until TUI is implemented
 ///
 /// # Arguments
@@ -35,14 +34,33 @@ use std::time::Duration;
 ///      }
 ///  }
 /// ```
-pub fn translate_key(code: KeyCode) -> Option<Command> {
+pub fn translate_key(code: KeyCode, num_buf: &mut String) -> Option<Command> {
     match code {
-        KeyCode::Char('q') => Some(Command::Quit),
-        KeyCode::Up => Some(Command::Play),
-        KeyCode::Down => Some(Command::Pause),
         KeyCode::Left => Some(Command::Previous),
         KeyCode::Right => Some(Command::Next),
-        KeyCode::Backspace => Some(Command::Stop),
+        KeyCode::Esc => Some(Command::Stop),
+        KeyCode::Char(' ') => Some(Command::PlayPause),
+        KeyCode::Char('q') => Some(Command::Quit),
+        KeyCode::Char(c) if c.is_ascii_digit() => {
+            num_buf.push(c);
+            None
+        }
+        KeyCode::Backspace => {
+            num_buf.pop();
+            None
+        }
+        KeyCode::Enter => {
+            // Cheap way to select above 9, behaves like each selection is a
+            // password, which is not ideal
+            if let Ok(idx) = num_buf.parse::<usize>() {
+                num_buf.clear();
+                debug!("SelectedIndex:{}", &idx);
+                Some(Command::SelectIndex(idx - 1)) // -1 so that UI choice "1." ends on index 0
+            } else {
+                num_buf.clear();
+                None
+            }
+        }
         _ => None,
     }
 }
@@ -61,37 +79,7 @@ pub fn spawn_input_thread(tx: mpsc::Sender<AppEvent>) -> JoinHandle<anyhow::Resu
                         Event::FocusLost => debug!("FocusLost"),     // test
                         Event::Mouse(event) => debug!("{:?}", event), // test
                         Event::Key(key) => {
-                            let cmd = match key.code {
-                                // TODO: Make play/pause single button and use space
-                                KeyCode::Up => Some(Command::Play),
-                                KeyCode::Down => Some(Command::Pause),
-                                KeyCode::Left => Some(Command::Previous),
-                                KeyCode::Right => Some(Command::Next),
-                                KeyCode::Char(' ') => Some(Command::Stop),
-                                KeyCode::Char('q') => Some(Command::Quit),
-                                KeyCode::Char(c) if c.is_ascii_digit() => {
-                                    num_buf.push(c);
-                                    None
-                                }
-                                KeyCode::Backspace => {
-                                    num_buf.pop();
-                                    None
-                                }
-                                KeyCode::Enter => {
-                                    // Cheap way to select above 9, behaves like each selection is a
-                                    // password, which is not ideal
-                                    if let Ok(idx) = num_buf.parse::<usize>() {
-                                        num_buf.clear();
-                                        debug!("SelectedIndex:{}", &idx);
-                                        Some(Command::SelectIndex(idx))
-                                    } else {
-                                        num_buf.clear();
-                                        None
-                                    }
-                                }
-                                _ => None,
-                            };
-
+                            let cmd = translate_key(key.code, &mut num_buf);
                             if let Some(c) = cmd {
                                 debug!("Sending command{:?}", c);
                                 tx.send(AppEvent::Command(c.clone()))?;
@@ -118,7 +106,6 @@ pub fn main_loop<T: Library + Send + 'static>(
         .spawn(move || {
             let song_lib = lib;
             let mut controller = Controller::new(tx.clone(), &song_lib);
-            controller.load_songlist(song_lib.all_tracks());
 
             for evt in rx {
                 match evt {

@@ -43,20 +43,18 @@ impl<'a, T: Library> Controller<'a, T> {
     pub fn handle_command(&mut self, cmd: &Command) {
         let current = mem::replace(&mut self.app_state, AppState::new());
         self.app_state = match (current, cmd) {
-            (AppState::Stop(s), Command::Play) => {
-                AppState::Play(s.play(&mut self.manager, Vec::new(), None))
+            (AppState::Stop(s), Command::PlayPause) => {
+                // Hitting play on a stoped state ignores the transition
+                AppState::Stop(s)
             }
-            (AppState::Pause(p), Command::Play) => {
+            (AppState::Pause(p), Command::PlayPause) => {
                 AppState::Play(p.play(&mut self.manager, Vec::new(), None))
             }
-            (AppState::Play(p), Command::Pause) => AppState::Pause(p.pause(&self.manager)),
-
+            (AppState::Play(p), Command::PlayPause) => AppState::Pause(p.pause(&self.manager)),
             (AppState::Play(p), Command::Stop) => AppState::Stop(p.stop(&self.manager)),
-
             (AppState::Pause(p), Command::Stop) => AppState::Stop(p.stop(&self.manager)),
-
             (AppState::Pause(mut p), Command::Next) => {
-                if p.index < p.tracks.len() {
+                if p.tracks.len() > 0 && p.index < p.tracks.len() - 1 {
                     p.index += 1;
                     let nex_index = p.index;
                     // State calls play on unpause
@@ -66,7 +64,7 @@ impl<'a, T: Library> Controller<'a, T> {
                 }
             }
             (AppState::Play(mut p), Command::Next) => {
-                if p.index < p.tracks.len() {
+                if p.tracks.len() > 0 && p.index < p.tracks.len() - 1 {
                     p.index += 1;
                     self.manager.play(Some(&p.tracks[p.index]));
                     AppState::Play(p)
@@ -119,21 +117,6 @@ impl<'a, T: Library> Controller<'a, T> {
         }
     }
 
-    pub fn load_songlist(&mut self, list: Vec<Track>) {
-        // TODO: implement way to do this through command in handle command
-        //
-        let current = mem::replace(&mut self.app_state, AppState::new());
-        self.app_state = match current {
-            // TODO: ONLY WORKS FROM STOP FOR NOW MERGE IN THE COMMANDS HANDLING ABOVE
-            AppState::Stop(s) => {
-                let temp = s.play(&mut self.manager, list, None);
-                AppState::Pause(temp.pause(&self.manager))
-            }
-
-            other => other,
-        }
-    }
-
     pub fn handle_playback_event(&mut self, evt: PlaybackEvent) {
         match evt {
             PlaybackEvent::TrackFinished => {
@@ -158,36 +141,33 @@ impl<'a, T: Library> Controller<'a, T> {
                     _ => state,
                 }
             }
-            (UIState::AllSongs(us), Some(Choice::All)) => {
-                let appstate = mem::replace(&mut self.app_state, AppState::new());
-                self.app_state = match appstate {
-                    AppState::Stop(s) => {
-                        AppState::Play(s.play(&mut self.manager, us.get_all(), None))
-                    }
-                    AppState::Play(s) => {
-                        AppState::Play(s.play(&mut self.manager, us.get_all(), None))
-                    }
-                    AppState::Pause(s) => {
-                        AppState::Play(s.play(&mut self.manager, us.get_all(), None))
-                    }
-                };
-                UIState::AllSongs(us)
-            }
+            (state, Some(Choice::All)) => match state {
+                UIState::AllSongs(us) => {
+                    self.play_helper(us.get_all(), None);
+                    UIState::AllSongs(us)
+                }
+                UIState::ArtistSongs(us) => {
+                    self.play_helper(us.get_all(), None);
+                    UIState::ArtistSongs(us)
+                }
+                UIState::AlbumSongs(us) => {
+                    self.play_helper(us.get_all(), None);
+                    UIState::AlbumSongs(us)
+                }
+                UIState::ArtistAlbums(us) => UIState::ArtistSongs(us.get_all(self.library)),
+                _ => state,
+            },
             (state, Some(Choice::Item(idx))) => match state {
                 UIState::AllSongs(us) => {
-                    let appstate = mem::replace(&mut self.app_state, AppState::new());
-                    self.app_state = appstate.play(&mut self.manager, us.get_all(), Some(idx));
-
+                    self.play_helper(us.get_all(), Some(idx));
                     UIState::AllSongs(us)
                 }
                 UIState::AlbumSongs(us) => {
-                    let appstate = mem::replace(&mut self.app_state, AppState::new());
-                    self.app_state = appstate.play(&mut self.manager, us.get_all(), Some(idx));
+                    self.play_helper(us.get_all(), Some(idx));
                     UIState::AlbumSongs(us)
                 }
                 UIState::ArtistSongs(us) => {
-                    let appstate = mem::replace(&mut self.app_state, AppState::new());
-                    self.app_state = appstate.play(&mut self.manager, us.get_all(), Some(idx));
+                    self.play_helper(us.get_all(), Some(idx));
                     UIState::ArtistSongs(us)
                 }
                 UIState::ArtistAlbums(us) => UIState::AlbumSongs(us.select(idx, self.library)),
@@ -196,9 +176,9 @@ impl<'a, T: Library> Controller<'a, T> {
                 UIState::BrowseMenu(us) => {
                     // Browse Menu's choices are always: "All songs", "Artists", "Albums"
                     match idx {
-                        1 => UIState::AllSongs(us.all_songs(self.library)),
-                        2 => UIState::AllArtists(us.artists(self.library)),
-                        3 => UIState::AllAlbum(us.albums(self.library)),
+                        0 => UIState::AllSongs(us.all_songs(self.library)),
+                        1 => UIState::AllArtists(us.artists(self.library)),
+                        2 => UIState::AllAlbum(us.albums(self.library)),
                         _ => UIState::new(),
                     }
                 }
@@ -213,5 +193,11 @@ impl<'a, T: Library> Controller<'a, T> {
 
         // UPDATE DISPLAY AFTER CHOICE
         self.ui_state.ui_display();
+    }
+
+    // HELPERS
+    fn play_helper(&mut self, track_list: Vec<Track>, idx: Option<usize>) {
+        let appstate = mem::replace(&mut self.app_state, AppState::new());
+        self.app_state = appstate.play(&mut self.manager, track_list, idx);
     }
 }
